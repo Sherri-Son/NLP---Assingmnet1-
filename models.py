@@ -68,8 +68,6 @@ class FeatureExtractor(object):
 class UnigramFeatureExtractor(FeatureExtractor):
     """
     Extracts unigram bag-of-words features from a sentence. 
-    Each individual word is used as a bag-of-words feature
-    Feature values are word-frequency counts
     """
 
     def __init__(self, indexer: Indexer):
@@ -154,7 +152,6 @@ class BetterFeatureExtractor(FeatureExtractor):
 
 
 def _sigmoid(score):
-    # Numerically stable sigmoid.
     if score >= 0:
         return 1.0 / (1.0 + np.exp(-score))
     exp_score = np.exp(score)
@@ -166,8 +163,7 @@ def _sigmoid(score):
 class LogisticRegressionClassifier(SentimentClassifier):
     """
     Binary logistic regression classifier over sparse feature vectors.
-    Computes a weighted sum of sparse features.
-    Predicts positive (1) when score >= 0, otherwise negative (0)
+    Predicts positive when score >= 0, otherwise negative
     """ 
 
     def __init__(self, weights, feat_extractor):
@@ -186,9 +182,6 @@ class LogisticRegressionClassifier(SentimentClassifier):
 def train_logistic_regression(train_exs: List[SentimentExample], feat_extractor: FeatureExtractor) -> LogisticRegressionClassifier:
     """
     Train binary logistic regression with SGD.
-    (1) Builds the feature vocabulary
-    (2) Uses stochastic gradient descent (SGD)
-    (3) Default unigram path is selected in train_linear_model below
     """
     random.seed(0)
 
@@ -378,9 +371,6 @@ class DeepAveragingNetwork(nn.Module):
     """
     Deep Averaging Network:
     embeddings -> masked average -> hidden layer -> ReLU -> dropout -> output
-    (1) Look up pretrained word embeddings
-    (2) Average the word vectors for each sentence
-    (3) Feed the average through a feedforward neural network
     """
     def __init__(self, word_embeddings, hidden_size=100, dropout=0.3):
         super().__init__()
@@ -429,9 +419,6 @@ def _words_to_ids(words, word_embeddings):
 def _make_batch(examples, word_embeddings, max_len=60, min_len=1):
     """
     Pads a batch of SentimentExample objects with PAD=0.
-    Sentences have different lengths, so pad them with PAD=0
-    This lets the network process multiple examples at once
-    max_len=60 keeps training fast; longer sentences are truncated.
     """
     encoded = [_words_to_ids(ex.words, word_embeddings)[:max_len] for ex in examples]
     batch_len = max(min_len, max(len(ids) for ids in encoded))
@@ -517,9 +504,6 @@ def train_deep_averaging_network(args, train_exs: List[SentimentExample],
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(network.parameters(), lr=args.lr)
 
-    # Problem (batching_exploration)
-    # Use the command-line batch size so loss is computed over
-    # a whole batch instead of one example at a time.
     batch_size = 32
     min_len = 1
 
@@ -540,8 +524,6 @@ def train_deep_averaging_network(args, train_exs: List[SentimentExample],
             optimizer.zero_grad()
             logits = network(x)
 
-            # Problem (batching_exploration): y contains all labels
-            # in this batch, so this computes loss over the full batch.
             loss = criterion(logits, y)
             loss.backward()
             optimizer.step()
